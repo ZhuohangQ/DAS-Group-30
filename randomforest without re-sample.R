@@ -25,7 +25,7 @@ y = df[,7]
 #normal randomforest
 set.seed(1111)
 
-##choose 1:130 to be the predict set else are text
+##choose 1：839 to be the predict set else are text
 x_pre = x[1:839,]
 x_te = x[840:1049,]
 y_pre = y[1:839]
