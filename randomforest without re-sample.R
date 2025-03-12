@@ -50,7 +50,7 @@ TPR = TP/(TP + FN)
 TNR = TN/(FP + TN)
 
 ###main data Sensitivity, Specificity, 'Positive' Class, Accuracy
-confusionMatrix(predictions,y_te)
+confusionMatrix(y_te，predictions)
 
 ##roc is the plot of Sensitivity and Specificity ,auc is the area under the roc curve
 ##higher AUC means that higher prob that detect the TP infront of TN ,which mean are more possible to be good fit
