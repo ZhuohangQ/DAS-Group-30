@@ -1,0 +1,17 @@
+---
+title: "Data Analysis"
+author: "Group 30"
+engine: knitr
+format:
+  pdf:
+    output-file: "Group_30_qmd"
+    output-ext: "pdf"
+execute:
+  warning: false
+---
+
+```{r}
+# import packages
+library(knitr)
+library(tidyverse)
+```
