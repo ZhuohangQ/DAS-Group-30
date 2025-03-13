@@ -19,7 +19,7 @@ df = df %>% filter(Occupation != "?" & Nationality != "?")
 df = df %>% select(Age, Education, Marital_Status, Occupation, Sex, Hours_PW, Income)
 df = df %>% mutate(across(where(is.character), as.factor))
 x = df[,1:6]
-y = df[,7]
+y = df[,7]   
 
 ##Use K-fold to do the re-sample,which have 5 fold
 K = 5
