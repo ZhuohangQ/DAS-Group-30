@@ -255,7 +255,7 @@ print(acc_m)
 
 the re-sample are usually used to do repeat experiment ,this is for helping the model to give a more precise ACC and any other data. The method shows here is the **K-fold** for k equal to 5 . which mean split the hole data into 5 part and set each part as test data . which will give 5 different outcome ,to make the outcome useful ,we take **mean** for these outcome (thus ACC:**81.4%**),this would be a more representative outcome then the acc before.
 
-#Compareation to the glm and randomforest
+#Compareation to the glm and randomforest {#sec-Conpare}
 
 From the data we get above we can have a compare to two model.
 The data show above:(LEFT FOR GLM AND RIGHT FOR RF)
