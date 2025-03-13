@@ -37,7 +37,7 @@ To address this, a **Generalized Linear Model (GLM)** will be applied to evaluat
 
 ```{r}
 #| label: data processing
-df <- read.csv("C:\\Users\\wangj\\Desktop\\dataset30.csv", stringsAsFactors = FALSE)
+df <- read.csv("dataset30.csv", stringsAsFactors = FALSE)
 df <- df %>%
   mutate(across(everything(), ~str_remove_all(., ","))) %>%  
   mutate(Hours_PW = as.numeric(Hours_PW),  
@@ -151,7 +151,7 @@ The evaluation results of this logistic regression model on the test set indicat
 # Random Forest Exploratory Data Analysis {#sec-RFEDA}
 
 ```{r}
-df = read.csv("C:\\Users\\wangj\\Desktop\\dataset30.csv")
+df = read.csv("dataset30.csv")
 
 #clear the data
 
