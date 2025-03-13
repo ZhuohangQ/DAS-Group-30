@@ -25,11 +25,11 @@ y = df[,7]
 #normal randomforest
 set.seed(1111)
 
-##choose 1：839 to be the predict set else are text
-x_pre = x[1:839,]
-x_te = x[840:1049,]
-y_pre = y[1:839]
-y_te = y[840:1049]
+##choose 1:130 to be the predict set else are text
+x_pre = x[1:130,]
+x_te = x[131:166,]
+y_pre = y[1:130]
+y_te = y[131:166]
 pre = cbind(y_pre,x_pre)
 
 ##do rf  
@@ -50,7 +50,7 @@ TPR = TP/(TP + FN)
 TNR = TN/(FP + TN)
 
 ###main data Sensitivity, Specificity, 'Positive' Class, Accuracy
-confusionMatrix(y_te，predictions)
+confusionMatrix(predictions,y_te)
 
 ##roc is the plot of Sensitivity and Specificity ,auc is the area under the roc curve
 ##higher AUC means that higher prob that detect the TP infront of TN ,which mean are more possible to be good fit
