@@ -1,0 +1,86 @@
+---
+title: "Analysis of Factors Influencing Individual Income Levels"
+author: "Group Number: 30"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: true
+  eval: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: libraries
+library(tidyverse)
+library(ggplot2)
+library(caret)
+library(pROC)
+library(GGally)
+```
+
+# Introduction {#sec-Intro}
+
+This analysis aims to identify key socioeconomic factors that influence whether an individual earns more than \$50,000 per year, using data from the **1994 US Census**. The dataset includes demographic and employment-related variables such as **age, education level, marital status, occupation, sex, hours worked per week, and nationality**, with income categorized into two groups: **≤\$50K and \>\$50K per year**.
+
+To address this, a **Generalized Linear Model (GLM)** will be applied to evaluate the impact of these factors on income levels. The findings will provide insights into the most significant predictors of higher earnings, contributing to a deeper understanding of income distribution patterns. The results will be summarized and presented in a structured format.
+
+# Exploratory Data Analysis {#sec-EDA}
+
+```{r}
+#| label: data processing
+df <- read.csv("C:\\Users\\Lenovo\\Desktop\\data analysis skills\\dataset30.csv", stringsAsFactors = FALSE)
+df <- df %>%
+  mutate(across(everything(), ~str_remove_all(., ","))) %>%  
+  mutate(Hours_PW = as.numeric(Hours_PW),  
+         Age = as.numeric(Age),  
+         Income = ifelse(Income == ">50K", 1, 0))  
+df <- df %>% filter(Occupation != "?" & Nationality != "?")
+df <- df %>% select(Age, Education, Marital_Status, Occupation, Sex, Hours_PW, Income)
+df <- df %>% mutate(across(where(is.character), as.factor))
+str(df)
+df$Age <- scale(df$Age)
+set.seed(1111)
+trainIndex <- createDataPartition(df$Income, p = 0.8, list = FALSE)
+train_data <- df[trainIndex, ]
+test_data <- df[-trainIndex, ]
+```
+
+This data analysis first involved cleaning, transforming, selecting, and standardizing the raw data. Then, the dataset was split into **80% training set and 20% test set** to ensure data quality and enhance the model's generalization ability.
+
+
+
+# Formal Data Analysis {#sec-FDA}
+
+```{r}
+#| label: Model Training
+full_model <- glm(Income ~ ., data = train_data, family = binomial)
+stepwise_model <- step(full_model, direction = "backward")
+```
+
+The **logistic regression** model is built to predict income level **(`Income`)** by considering various socioeconomic factors, such as **age, education, marital status, occupation, sex,** and **hours worked per week**. To further refine the model, **stepwise regression** is applied using **backward elimination**, which systematically removes variables that do **not significantly** **(sex)** contribute to the prediction based on the **Akaike Information Criterion (AIC)**. The initial model's AIC was **883.77**, while the optimized model's AIC was reduced to **882.19**, indicating that the model became more concise while maintaining a good fit. As a result, this approach not only simplifies the model but also helps to reduce overfitting and enhance interpretability by retaining only the most significant predictors.
+
+```{r}
+#| label: Performance Evaluation
+test_predictions <- predict(stepwise_model, newdata = test_data, type = "response")
+test_predicted_classes <- ifelse(test_predictions > 0.5, 1, 0)
+confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
+conf_matrix <- confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
+accuracy <- conf_matrix$overall["Accuracy"]
+print(accuracy)
+roc_curve_test <- roc(test_data$Income, test_predictions)
+plot(roc_curve_test, col = "red", main = "ROC Curve for Test Data", xlim = c(1, 0), ylim = c(0, 1), asp = 1)
+auc(roc_curve_test)
+```
+
+The evaluation results of this logistic regression model on the test set indicate a high classification capability, with an accuracy of **85.41%** within the **95% confidence interval (80.73% - 89.32%)**, demonstrating stable predictive performance. The confusion matrix further shows that the model has a strong ability to identify low-income individuals, achieving a **sensitivity of 94.86%**, meaning that most low-income individuals are correctly classified. However, the **specificity is only 55.22%**, suggesting that the model has some difficulty in correctly identifying high-income individuals, with a considerable number being misclassified as low-income. Despite this, the model's **accuracy (ACC)** still reaches **85.4%**. In terms of overall classification performance, the **AUC value of 0.8683** indicates that the model performs well in distinguishing between high-income and low-income individuals, and the **ROC curve** demonstrates strong discriminatory power.
+
+# Conclusions {#sec-Conc}
+
+This study utilized data from the **1994 U.S. Census** to analyze key socioeconomic factors influencing individual income levels. The results indicate that **education level, occupation, marital status, and age** are crucial determinants of income, with higher education and specialized professions significantly increasing earning potential. Additionally, **sex**, as men are more likely to earn higher incomes. Furthermore, **weekly working hours** have a certain impact on income, though with diminishing marginal returns.
