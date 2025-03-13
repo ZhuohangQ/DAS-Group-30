@@ -15,16 +15,17 @@ execute:
 
 ```{r}
 #| label: libraries
+
 library(tidyverse)
-library(ggplot2)
 library(caret)
 library(pROC)
-library(GGally)
 library(rpart)
 library(pROC)
 library(randomForest)
 library(randomForestExplainer)
 library(party)
+
+set.seed(1111)
 ```
 
 # Introduction {#sec-Intro}
@@ -33,10 +34,11 @@ This analysis aims to identify key socioeconomic factors that influence whether 
 
 To address this, a **Generalized Linear Model (GLM)** will be applied to evaluate the impact of these factors on income levels. The findings will provide insights into the most significant predictors of higher earnings, contributing to a deeper understanding of income distribution patterns. The results will be summarized and presented in a structured format.
 
-# Exploratory Data Analysis {#sec-EDA}
+# Data Processing
 
 ```{r}
 #| label: data processing
+
 df <- read.csv("dataset30.csv", stringsAsFactors = FALSE)
 df <- df %>%
   mutate(across(everything(), ~str_remove_all(., ","))) %>%  
@@ -48,13 +50,14 @@ df <- df %>% select(Age, Education, Marital_Status, Occupation, Sex, Hours_PW, I
 df <- df %>% mutate(across(where(is.character), as.factor))
 str(df)
 df$Age <- scale(df$Age)
-set.seed(1111)
 trainIndex <- createDataPartition(df$Income, p = 0.8, list = FALSE)
 train_data <- df[trainIndex, ]
 test_data <- df[-trainIndex, ]
 ```
 
 This data analysis first involved cleaning, transforming, selecting, and standardizing the raw data. Then, the dataset was split into **80% training set and 20% test set** to ensure data quality and enhance the model's generalization ability.
+
+# Exploratory Data Analysis {#sec-EDA}
 
 ```{r}
 # Age vs. Income
@@ -228,7 +231,6 @@ The decision tree plot is the plot that give the most obvious information to the
 
 ```{r}
 K = 5
-set.seed(1111)
 folds = cut(1:1409, breaks=K, labels=FALSE)
 sen = sep = acc =numeric(K)
 for(k in 1:K){
