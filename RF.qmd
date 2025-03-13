@@ -1,0 +1,131 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+# Parpare work
+```{r}
+library(rpart)
+library(rpart.plot)
+library(pROC)
+library(randomForest)
+library(tidyverse)
+library(randomForestExplainer)
+library(caret)
+library(party)
+
+df = read.csv("C:\\Users\\wangj\\Desktop\\dataset30.csv")
+
+#clear the data
+
+df = df %>%
+  mutate(across(everything(), ~str_remove_all(., ","))) %>%  
+  mutate(Hours_PW = as.numeric(Hours_PW),  
+         Age = as.numeric(Age))  
+df = df %>% filter(Occupation != "?" & Nationality != "?")
+df = df %>% select(Age, Education, Marital_Status, Occupation, Sex, Hours_PW, Income)
+df = df %>% mutate(across(where(is.character), as.factor))
+x = df[,1:6]
+y = df[,7]
+
+x_pre = x[1:1228,]
+x_te = x[1229:1409,]
+y_pre = y[1:1228]
+y_te = y[1229:1409]
+#normal randomforest
+set.seed(1111)
+
+##choose 1:130 to be the predict set else are text
+
+pre = cbind(y_pre,x_pre)
+```
+These work are used to get the clean data .
+Set seed as 1111.
+The data are divide as 80% for train and 20% as test
+
+# THE RANDOM FOREST MODEL
+## The data fitting without re-sample
+```{r}
+##do rf  
+rf_model = randomForest(y_pre~.,data = pre,ntree = 100,importance = T)
+predictions <- predict(rf_model, newdata = x_te)
+
+##T:TRUE F:False P:Pos. N:Nei.
+###positive is <=50k
+tb = table(predictions,y_te)
+TP = tb[1,1]
+FP = tb[1,2]
+FN = tb[2,1]
+TN = tb[2,2]
+view(tb)
+```
+After doing the Randomforest ,we get the Predict number and then compare with the text orgin data,which show that most of the data full in the True zone, but some of the data are wrong.We want to find the rate of Fales data.
+
+## analyze the data
+```{r}
+###acc:the prob of predict right
+acc = (TP + TN)/(TP + FP + FN + TN)
+TPR = TP/(TP + FN)
+TNR = TN/(FP + TN)
+
+###main data Sensitivity, Specificity, 'Positive' Class, Accuracy
+confusionMatrix(predictions,y_te)
+```
+From the data we find that ACC of the data is 0.828 ,and the Sensitivity is 0.911 ,Specoficity is 0.578
+which mean it show lots of information to the y variable.That most of the data are True.
+```{r}
+##roc is the plot of Sensitivity and Specificity ,auc is the area under the roc curve
+##higher AUC means that higher prob that detect the TP infront of TN ,which mean are more possible to be good fit
+pred_probs = predict(rf_model,newdata = x_te, type = "prob")[,2]
+roc_c = roc(y_te,pred_probs)
+plot(roc_c)
+auc(roc_c)
+```
+The ROC plot show there ara a large area under the curve which mean that there is a high prob that the data contain True Positive than the False Neigative which is good sign that the data fit well.
+
+## plot and show the data
+```{r}
+#plot the rf
+#more minimal depth have high weight in predict
+explain_forest(rf_model, data = pre)
+plot_min_depth_distribution(rf_model)
+##decition tree
+rpart_tree <- rpart(y_pre ~ ., data=pre)
+plot(rpart_tree,compress = TRUE)
+text(rpart_tree, use.n = TRUE)
+```
+The first plot show that the data are highly contain to Marital_Status,then EDU.etc
+The second plotis the decision tree of the data ,which show how the RF model work in this datafitting.
+
+# The data fitting with re-sample
+## K-fold re-sample
+We use a 5-fold re-sample to do the work, which mean we do this 5 times, and get the mean acc
+This will make the outcome more precise.
+```{r}
+##Use K-fold to do the re-sample,which have 5 fold
+K = 5
+set.seed(1111)
+folds = cut(1:1409, breaks=K, labels=FALSE)
+sen = sep = acc =numeric(K)
+for(k in 1:K){
+  x.train = x[which(folds!=k),]
+  x.text = x[which(folds==k),]
+  y.train = y[which(folds!=k)]
+  y.text = y[which(folds==k)]
+  pre = cbind(y.train,x.train)
+  rf_fit = randomForest(y.train~.,data = pre,ntree = 100,importance = T)
+  predictions = predict(rf_fit,newdata =x.text)
+  tb = confusionMatrix(y.text,predictions)
+  tb.class = tb$byClass
+  tb.overall = tb$overall
+  sen[k] = tb.class[1]
+  sep[k] = tb.class[2]
+  acc[k] = tb.overall[1]
+}
+##the mean of 5 time predict-text outcome
+sen_m = sum(sen)/5
+sep_m = sum(sep)/5
+acc_m =sum(as.numeric(acc))/5
+
+```
+the acc is 0.814 show the good fit of model.
