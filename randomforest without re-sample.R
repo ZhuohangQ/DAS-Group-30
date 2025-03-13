@@ -26,10 +26,10 @@ y = df[,7]
 set.seed(1111)
 
 ##choose 1:130 to be the predict set else are text
-x_pre = x[1:130,]
-x_te = x[131:166,]
-y_pre = y[1:130]
-y_te = y[131:166]
+x_pre = x[1:839,]
+x_te = x[840:1409,]
+y_pre = y[1:839]
+y_te = y[840:1409]
 pre = cbind(y_pre,x_pre)
 
 ##do rf  
