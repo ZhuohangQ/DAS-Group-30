@@ -202,10 +202,13 @@ auc(roc_c)
 
 Using the **ROC and AUC** to detect the balance of the model ,from the plot of ROC we see that the curve are far away from the straight line ,which can also reflect by the number of AUC is **79.68**, that means the model show more information in the True Positive range than False Negative range ,so it give a good fit to the data.
 
-```{r}
+```{r, results='hide'}
 #plot the rf
 #more minimal depth have high weight in predict
 explain_forest(rf_model, data = pre)
+```
+
+```{r}
 plot_min_depth_distribution(rf_model)
 ```
 
