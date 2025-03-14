@@ -216,7 +216,7 @@ discriminatory power.
 
 ```{r}
 df = read.csv("C:\\Users\\wangj\\Desktop\\dataset30.csv")
-
+set.seed(1111)
 #clear the data
 
 df = df %>%
