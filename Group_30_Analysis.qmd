@@ -14,45 +14,55 @@ execute:
 ---
 
 ```{r}
-#| label: libraries
-
+# load packages
+library(knitr)
 library(tidyverse)
 library(caret)
+library(party)
 library(pROC)
 library(rpart)
 library(rpart.plot)
-library(pROC)
 library(randomForest)
 library(randomForestExplainer)
-library(party)
+```
+
+```{r}
+save_fig <- function(filename, ...) {
+  ggsave(
+    filename = file.path('Plots', paste0(filename, '.png')),
+    ...
+  )
+}
 ```
 
 # Introduction {#sec-Intro}
 
-This analysis aims to identify key socioeconomic factors that influence whether an individual earns more than \$50,000 per year, using data from the **1994 US Census**. The dataset includes demographic and employment-related variables such as **age, education level, marital status, occupation, sex, hours worked per week, and nationality**, with income categorized into two groups: **≤\$50K and \>\$50K per year**.
+This analysis aims to identify key socio-economic factors that influence whether an individual earns more than \$50,000 per year, using data from the **1994 US Census**. The dataset includes demographic and employment-related variables including **age, education level, marital status, occupation, sex, hours worked per week, and nationality**, with income categorised into two groups: $\le$\$50k and $>$\$50k per year.
 
-To address this, a **Generalized Linear Model (GLM)** will be applied to evaluate the impact of these factors on income levels. The findings will provide insights into the most significant predictors of higher earnings, contributing to a deeper understanding of income distribution patterns. The results will be summarized and presented in a structured format.
+To address this, a **Generalised Linear Model** will be applied to evaluate the impact of these factors on income levels. The findings will provide insights into the most significant predictors of higher earnings, contributing to a deeper understanding of income distribution patterns.
 
 # Data Processing
 
 ```{r}
-#| label: data processing
+# import and clean the data
+df <- read.csv("dataset30.csv", na.strings = '?,',
+               stringsAsFactors = FALSE) %>%
+  drop_na() %>%
+  mutate(
+    across(everything(), ~ str_remove_all(., ",")),
+    Hours_PW = as.numeric(Hours_PW),
+    Age = scale(as.numeric(Age))[,1],
+    Income = ifelse(Income == ">50K", 1, 0),
+    across(where(is.character), as.factor))
+```
 
+```{r}
+# split train and test data
 set.seed(1111)
-df <- read.csv("dataset30.csv", stringsAsFactors = FALSE)
-df <- df %>%
-  mutate(across(everything(), ~str_remove_all(., ","))) %>%  
-  mutate(Hours_PW = as.numeric(Hours_PW),  
-         Age = as.numeric(Age),  
-         Income = ifelse(Income == ">50K", 1, 0))  
-df <- df %>% filter(Occupation != "?" & Nationality != "?")
-df <- df %>% select(Age, Education, Marital_Status, Occupation, Sex, Hours_PW, Income)
-df <- df %>% mutate(across(where(is.character), as.factor))
-str(df)
-df$Age <- scale(df$Age)
+# trainIndex <- sample(1:nrow(df), 0.8 * nrow(df))
 trainIndex <- createDataPartition(df$Income, p = 0.8, list = FALSE)
-train_data <- df[trainIndex, ]
-test_data <- df[-trainIndex, ]
+train_data <- df[trainIndex,]
+test_data <- df[-trainIndex,]
 ```
 
 This data analysis first involved cleaning, transforming, selecting, and standardizing the raw data. Then, the dataset was split into **80% training set and 20% test set** to ensure data quality and enhance the model's generalization ability.
@@ -60,71 +70,121 @@ This data analysis first involved cleaning, transforming, selecting, and standar
 # Exploratory Data Analysis {#sec-EDA}
 
 ```{r}
-# Age vs. Income
-ggplot(df, aes(x = as.factor(Income), y = Age, fill = as.factor(Income))) + 
+#| fig-cap: Age vs. Income
+#| fig-align: center
+
+g <-
+  ggplot(df, aes(x = as.factor(Income), y = Age, fill = as.factor(Income))) +
   geom_boxplot() +
   scale_x_discrete(labels = c("<=50K", ">50K")) +
-  ggtitle("Age vs. Income") +
   xlab("Income Category") +
   ylab("Age") +
   theme_minimal()
+save_fig('age', plot = g + ggtitle('Age vs. Income'))
+g
 ```
 
-As can be seen from the figure, there is a certain positive correlation between age and income: the median age of the high-income group (income \>50K) is higher than that of the low-income group (income ≤50K), indicating that older people are more likely to has the higher income.
+As can be seen from the figure, there is a certain positive correlation between age and income: the median age of the high-income group (income $>$\$50K) is higher than that of the low-income group (income $\le$\$50K), indicating that older people are more likely to has the higher income.
 
 ```{r}
-# Working Hours vs. Income
-ggplot(df, aes(x = as.factor(Income), y = Hours_PW, fill = as.factor(Income))) + 
+#| fig-cap: Working Hours vs. Income
+#| fig-align: center
+
+g <-
+  ggplot(df, aes(x = as.factor(Income), y = Hours_PW, fill = as.factor(Income))) +
   geom_boxplot() +
   scale_x_discrete(labels = c("<=50K", ">50K")) +
-  ggtitle("Working Hours vs. Income") +
   xlab("Income Category") +
-  ylab("Hours Per Week") +
+  ylab("Hours per Week") +
   theme_minimal()
+save_fig('hour', plot = g + ggtitle("Working Hours vs. Income"))
+g
 ```
 
 Working hours have a significant impact on income, higher earners tend to work longer hours, but hours alone do not fully determine income. The working hours of low-income groups are more concentrated, but there are more outliers: individuals with extremely low working hours (\<25 hours) and extremely high working hours (\>50 hours).
 
 ```{r}
-# Education Level vs. Income (Bar Chart)
-ggplot(df, aes(x = Education, fill = as.factor(Income))) + 
-  geom_bar(position = "fill") +  
-  coord_flip() +  
-  scale_fill_manual(values = c("skyblue", "orange"), labels = c("<=50K", ">50K")) +
-  ggtitle("Education Level vs. Income") +
+#| fig-cap: Education Level vs. Income
+#| fig-align: center
+
+g <-
+  ggplot(df, aes(x = Education, fill = as.factor(Income))) +
+  geom_bar(position = "fill") +
+  coord_flip() +
+  scale_fill_manual(values = c("skyblue", "orange"),
+                    labels = c("<=50K", ">50K")) +
   xlab("Education Level") +
   ylab("Proportion") +
   theme_minimal()
+save_fig('education', plot = g + ggtitle("Education Level vs. Income"))
+g
 ```
 
 Education level is positively correlated to income, and higher degree is more likely to earn a high income. In particular, the proportion of high income of master's, doctor's and professional school graduates is significantly higher, while those with low education level are mainly concentrated in low-income groups. This suggests that education level plays an important role in income.
 
 ```{r}
-# Occupation vs. Income (Bar Chart)
-ggplot(df, aes(x = Occupation, fill = as.factor(Income))) + 
-  geom_bar(position = "fill") + 
+#| fig-cap: Marital Status vs. Income
+#| fig-align: center
+
+g <-
+  ggplot(df, aes(x = Marital_Status, fill = as.factor(Income))) +
+  geom_bar(position = "fill") +
   coord_flip() +
-  scale_fill_manual(values = c("lightgreen", "red"), labels = c("<=50K", ">50K")) +
-  ggtitle("Occupation vs. Income") +
+  scale_fill_manual(values = c("skyblue", "orange"),
+                    labels = c("<=50K", ">50K")) +
+  xlab("Marital Status") +
+  ylab("Proportion") +
+  theme_minimal()
+save_fig('marital status', plot = g + ggtitle("Marital Status vs. Income"))
+g
+```
+
+The figure shows that people married with civil spouse have higher income than other group.
+
+```{r}
+#| fig-cap: Occupation vs. Income
+#| fig-align: center
+
+g <-
+  ggplot(df, aes(x = Occupation, fill = as.factor(Income))) +
+  geom_bar(position = "fill") +
+  coord_flip() +
+  scale_fill_manual(values = c("lightgreen", "red"),
+                    labels = c("<=50K", ">50K")) +
   xlab("Occupation") +
   ylab("Proportion") +
   theme_minimal()
+save_fig('occupation', plot = g + ggtitle("Occupation vs. Income"))
+g
 ```
 
 The figure shows clear income differences between different occupational categories. A higher percentage of "Exec-managerial" and "Prof-specialty" occupations make more than 50,000, indicating that these occupations are more likely to generate higher income. By contrast, the proportion of "Priv-house-serv" and "Handlers-cleaners" is significantly lower.
 
 ```{r}
-# Gender vs. Income (Bar Chart)
-ggplot(df, aes(x = Sex, fill = as.factor(Income))) + 
+#| fig-cap: Gender vs. Income
+#| fig-align: center
+
+g <-
+  ggplot(df, aes(x = Sex, fill = as.factor(Income))) +
   geom_bar(position = "fill") +
-  scale_fill_manual(values = c("purple", "pink"), labels = c("<=50K", ">50K")) +
-  ggtitle("Gender vs. Income") +
+  scale_fill_manual(values = c("purple", "pink"),
+                    labels = c("<=50K", ">50K")) +
   xlab("Gender") +
   ylab("Proportion") +
   theme_minimal()
+save_fig('gender', plot = g + ggtitle("Gender vs. Income"))
+g
 ```
 
-There are significant differences in income distribution between men and women. The propotion of men earning more than 50,000 is significantly higher than that of women, while the women income less than 50,000 is relatively higher.
+There are significant differences in income distribution between men and women. The propotion of men earning more than \$50,000 is significantly higher than that of women, while the women income less than \$50,000 is relatively higher.
+
+```{r}
+#| tbl-cap: Nationality Summary
+
+df$Nationality %>% table() %>% kable()
+```
+
+The table shows that the sample size from groups except United States is small, which may adversely affect modelling accuracy.
 
 # Formal Data Analysis {#sec-FDA}
 
@@ -199,7 +259,7 @@ print(TPR)
 print(TNR)
 ```
 
-The  accuracy of randomforest is up tp **82.87%** which shows that it give lots of information to the predictors, and th achieving a **sensitivity of 86.71%** and **specificity of 68.42%** ,which mean it have a low ability in predict the negative size of value which is the income >50%.
+The accuracy of randomforest is up tp **82.87%** which shows that it give lots of information to the predictors, and th achieving a **sensitivity of 86.71%** and **specificity of 68.42%** ,which mean it have a low ability in predict the negative size of value which is the income \>50%.
 
 ```{r}
 pred_probs = predict(rf_model,newdata = x_te, type = "prob")[,2]
@@ -262,16 +322,7 @@ the re-sample are usually used to do repeat experiment ,this is for helping the 
 
 ## Comparative Analysis between the GLM and Random Forest {#sec-Com}
 
-From the data we get above we can have a compare to two model.
-The data show above:(LEFT FOR GLM AND RIGHT FOR RF)
-ACC: 0.8541 - 0.8287
-Sensitivity: 0.9486 - 0.8671
-Specificity: 0.5522 - 0.6842
-AUC: 0.8683 - 0.8018
-After looking at these data we can see that two data we can get the conclusion that two model are giving the near ACC and AUC ,and the GLM is higher, it can show that GLM are giving more information to the data, but maybe after changing the depth of Randomforest ,the fitting rate of it would be higher than the GLM.
-So we can say that both of the model can be use in this data fitting but glm is a better one .
-tip:
-the RF model are higher in Specificity and lower in Sensitivity show that it have a better detection on the Negative side but less in Positive side.
+From the data we get above we can have a compare to two model. The data show above:(LEFT FOR GLM AND RIGHT FOR RF) ACC: 0.8541 - 0.8287 Sensitivity: 0.9486 - 0.8671 Specificity: 0.5522 - 0.6842 AUC: 0.8683 - 0.8018 After looking at these data we can see that two data we can get the conclusion that two model are giving the near ACC and AUC ,and the GLM is higher, it can show that GLM are giving more information to the data, but maybe after changing the depth of Randomforest ,the fitting rate of it would be higher than the GLM. So we can say that both of the model can be use in this data fitting but glm is a better one . tip: the RF model are higher in Specificity and lower in Sensitivity show that it have a better detection on the Negative side but less in Positive side.
 
 # Conclusions {#sec-Conc}
 
