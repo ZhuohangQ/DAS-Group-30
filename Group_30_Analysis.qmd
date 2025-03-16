@@ -181,10 +181,12 @@ There are significant differences in income distribution between men and women. 
 ```{r}
 #| tbl-cap: Nationality Summary
 
-df$Nationality %>% table() %>% kable()
+df$Nationality %>% table() %>%
+  sort(decreasing = TRUE) %>%
+  head(6) %>% kable()
 ```
 
-The table shows that the sample size from groups except United States is small, which may adversely affect modelling accuracy.
+The table shows that the sample size from groups except United States is small, which may adversely affect model performance.
 
 # Formal Data Analysis {#sec-FDA}
 
