@@ -117,8 +117,21 @@ Working hours have a significant impact on income, higher earners tend to work l
 
 ```{r}
 cat_plot <- function(data, col) {
-  ggplot(data, aes(x = {{col}}, fill = Income)) +
-  geom_bar() +
+  data <- data %>% select({{col}}, Income)
+  colname <- as_label(enquo(col))
+  
+  data %>% summarise(
+    '>50K' = sum(Income == '>50K'),
+    '<=50K' = sum(Income == '<=50K'),
+    prop = mean(Income == '>50K'),
+    .by = {{col}}
+  ) %>% pivot_longer(
+    cols = c('>50K', '<=50K'),
+    names_to = 'Income'
+  ) %>%
+    
+  ggplot(aes(x = reorder({{col}}, prop), fill = Income)) +
+  geom_col(aes(y = value)) +
   ylab("Count") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 }
