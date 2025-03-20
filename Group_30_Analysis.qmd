@@ -27,6 +27,10 @@ library(randomForestExplainer)
 ```
 
 ```{r}
+theme_set(theme_minimal())
+```
+
+```{r}
 save_fig <- function(filename, ...) {
   ggsave(
     filename = file.path('Plots', paste0(filename, '.png')),
@@ -52,7 +56,11 @@ df <- read.csv("dataset30.csv", na.strings = '?,',
     across(everything(), ~ str_remove_all(., ",")),
     Hours_PW = as.numeric(Hours_PW),
     Age = scale(as.numeric(Age))[,1],
-    Income = ifelse(Income == ">50K", 1, 0),
+    Education = Education %>% factor(
+      levels = c('Preschool', '1st-4th', '5th-6th', '7th-8th',
+                 '9th', '10th', '11th', '12th', 'HS-grad',
+                 'Prof-school', 'Some-college', 'Assoc-acdm', 'Assoc-voc',
+                 'Bachelors', 'Masters', 'Doctorate')),
     across(where(is.character), as.factor))
 ```
 
@@ -70,123 +78,126 @@ This data analysis first involved cleaning, transforming, selecting, and standar
 # Exploratory Data Analysis {#sec-EDA}
 
 ```{r}
-#| fig-cap: Age vs. Income
+num_plot <- function(data, col) {
+  ggplot(data, aes(x = Income, y = {{col}}, fill = Income)) +
+  geom_boxplot() +
+  xlab("Income Levels")
+}
+```
+
+```{r}
+#| fig-cap: Box-Plot of Age vs. Income
 #| fig-align: center
 
 g <-
-  ggplot(df, aes(x = as.factor(Income), y = Age, fill = as.factor(Income))) +
-  geom_boxplot() +
-  scale_x_discrete(labels = c("<=50K", ">50K")) +
-  xlab("Income Category") +
-  ylab("Age") +
-  theme_minimal()
-save_fig('age', plot = g + ggtitle('Age vs. Income'))
+  num_plot(df, Age) +
+  ylab("Age")
+save_fig(
+  'age',
+  plot = g + ggtitle('Box-Plot of Age vs. Income'))
 g
 ```
 
 As can be seen from the figure, there is a certain positive correlation between age and income: the median age of the high-income group (income $>$\$50K) is higher than that of the low-income group (income $\le$\$50K), indicating that older people are more likely to has the higher income.
 
 ```{r}
-#| fig-cap: Working Hours vs. Income
+#| fig-cap: Box-Plot of Worked Hours vs. Income
 #| fig-align: center
 
 g <-
-  ggplot(df, aes(x = as.factor(Income), y = Hours_PW, fill = as.factor(Income))) +
-  geom_boxplot() +
-  scale_x_discrete(labels = c("<=50K", ">50K")) +
-  xlab("Income Category") +
-  ylab("Hours per Week") +
-  theme_minimal()
-save_fig('hour', plot = g + ggtitle("Working Hours vs. Income"))
+  num_plot(df, Hours_PW) +
+  ylab("Hours per Week")
+save_fig(
+  'hour',
+  plot = g + ggtitle("Box-Plot of Worked Hours vs. Income"))
 g
 ```
 
 Working hours have a significant impact on income, higher earners tend to work longer hours, but hours alone do not fully determine income. The working hours of low-income groups are more concentrated, but there are more outliers: individuals with extremely low working hours (\<25 hours) and extremely high working hours (\>50 hours).
 
 ```{r}
-#| fig-cap: Education Level vs. Income
+cat_plot <- function(data, col) {
+  ggplot(data, aes(x = {{col}}, fill = Income)) +
+  geom_bar() +
+  ylab("Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+```
+
+```{r}
+#| fig-cap: Bar-Plot of Education Level by Income
 #| fig-align: center
 
 g <-
-  ggplot(df, aes(x = Education, fill = as.factor(Income))) +
-  geom_bar(position = "fill") +
-  coord_flip() +
-  scale_fill_manual(values = c("skyblue", "orange"),
-                    labels = c("<=50K", ">50K")) +
-  xlab("Education Level") +
-  ylab("Proportion") +
-  theme_minimal()
-save_fig('education', plot = g + ggtitle("Education Level vs. Income"))
+  cat_plot(df, Education) +
+  xlab("Education Level")
+save_fig(
+  'education',
+  plot = g + ggtitle("Bar-Plot of Education Level by Income"))
 g
 ```
 
 Education level is positively correlated to income, and higher degree is more likely to earn a high income. In particular, the proportion of high income of master's, doctor's and professional school graduates is significantly higher, while those with low education level are mainly concentrated in low-income groups. This suggests that education level plays an important role in income.
 
 ```{r}
-#| fig-cap: Marital Status vs. Income
+#| fig-cap: Bar-Plot of Marital Status by Income
 #| fig-align: center
 
 g <-
-  ggplot(df, aes(x = Marital_Status, fill = as.factor(Income))) +
-  geom_bar(position = "fill") +
-  coord_flip() +
-  scale_fill_manual(values = c("skyblue", "orange"),
-                    labels = c("<=50K", ">50K")) +
-  xlab("Marital Status") +
-  ylab("Proportion") +
-  theme_minimal()
-save_fig('marital status', plot = g + ggtitle("Marital Status vs. Income"))
+  cat_plot(df, Marital_Status) +
+  xlab("Marital Status")
+save_fig(
+  'marital status',
+  plot = g + ggtitle("Bar-Plot of Marital Status by Income"))
 g
 ```
 
 The figure shows that people married with civil spouse have higher income than other group.
 
 ```{r}
-#| fig-cap: Occupation vs. Income
+#| fig-cap: Bar-Plot of Occupation by Income
 #| fig-align: center
 
 g <-
-  ggplot(df, aes(x = Occupation, fill = as.factor(Income))) +
-  geom_bar(position = "fill") +
-  coord_flip() +
-  scale_fill_manual(values = c("lightgreen", "red"),
-                    labels = c("<=50K", ">50K")) +
-  xlab("Occupation") +
-  ylab("Proportion") +
-  theme_minimal()
-save_fig('occupation', plot = g + ggtitle("Occupation vs. Income"))
+  cat_plot(df, Occupation) +
+  xlab("Occupation")
+save_fig(
+  'occupation',
+  plot = g + ggtitle("Bar-Plot of Occupation by Income"))
 g
 ```
 
 The figure shows clear income differences between different occupational categories. A higher percentage of "Exec-managerial" and "Prof-specialty" occupations make more than 50,000, indicating that these occupations are more likely to generate higher income. By contrast, the proportion of "Priv-house-serv" and "Handlers-cleaners" is significantly lower.
 
 ```{r}
-#| fig-cap: Gender vs. Income
+#| fig-cap: Bar-Plot of Gender by Income
 #| fig-align: center
 
 g <-
-  ggplot(df, aes(x = Sex, fill = as.factor(Income))) +
-  geom_bar(position = "fill") +
-  scale_fill_manual(values = c("purple", "pink"),
-                    labels = c("<=50K", ">50K")) +
-  xlab("Gender") +
-  ylab("Proportion") +
-  theme_minimal()
-save_fig('gender', plot = g + ggtitle("Gender vs. Income"))
+  cat_plot(df, Sex) +
+  xlab("Gender")
+save_fig(
+  'gender',
+  plot = g + ggtitle("Bar-Plot of Gender by Income"))
 g
 ```
 
 There are significant differences in income distribution between men and women. The propotion of men earning more than \$50,000 is significantly higher than that of women, while the women income less than \$50,000 is relatively higher.
 
 ```{r}
-#| tbl-cap: Nationality Summary
+#| fig-cap: Bar-Plot of Nationality by Income
+#| fig-align: center
 
-df$Nationality %>% table() %>%
-  sort(decreasing = TRUE) %>%
-  head(6) %>% kable()
+g <-
+  cat_plot(df, Nationality) +
+  xlab("Nationality")
+save_fig(
+  'nationality',
+  plot = g + ggtitle("Bar-Plot of Nationality by Income"))
+g
 ```
 
-The table shows that the sample size from groups except United States is small, which may adversely affect model performance.
+The table shows that the sample size from groups except United States is small, which may adversely affect model performance if nationality is used as an explanatory variable.
 
 # Formal Data Analysis {#sec-FDA}
 
@@ -205,7 +216,7 @@ The **logistic regression** model is built to predict income level **(`Income`)*
 #| label: Performance Evaluation
 
 test_predictions <- predict(stepwise_model, newdata = test_data, type = "response")
-test_predicted_classes <- ifelse(test_predictions > 0.5, 1, 0)
+test_predicted_classes <- ifelse(test_predictions > 0.5, '>50K', '<=50K')
 confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
 conf_matrix <- confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
 accuracy <- conf_matrix$overall["Accuracy"]
