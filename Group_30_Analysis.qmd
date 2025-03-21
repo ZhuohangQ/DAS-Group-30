@@ -115,6 +115,7 @@ Working hours have a significant impact on income, higher earners tend to work l
 ## Categorical Variables
 
 ```{r}
+# fix the data
 cat_plot <- function(data, col) {
   data <- data %>% select({{col}}, Income)
   colname <- as_label(enquo(col))
@@ -217,8 +218,9 @@ The table shows that the sample size from groups except United States is small, 
 
 ```{r}
 #| label: Model Training
-
+# Fit a full logistic regression model using all predictors
 full_model <- glm(Income ~ ., data = train_data, family = binomial)
+# Perform stepwise regression to simplify the model, starting from the full model and removing non-significant predictors
 stepwise_model <- step(full_model, direction = "backward")
 ```
 
@@ -226,13 +228,14 @@ The **logistic regression** model is built to predict income level **(`Income`)*
 
 ```{r}
 #| label: Performance Evaluation
-
+# compute the accuracy, confusionMatrix
 test_predictions <- predict(stepwise_model, newdata = test_data, type = "response")
 test_predicted_classes <- ifelse(test_predictions > 0.5, '>50K', '<=50K')
 confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
 conf_matrix <- confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
 accuracy <- conf_matrix$overall["Accuracy"]
 print(accuracy)
+# draw the curve of roc and compute the auc
 roc_curve_test <- roc(test_data$Income, test_predictions)
 plot(roc_curve_test, col = "red", main = "ROC Curve for Test Data", xlim = c(1, 0), ylim = c(0, 1), asp = 1)
 auc(roc_curve_test)
@@ -243,6 +246,7 @@ The evaluation results of this logistic regression model on the test set indicat
 ## Random Forest {#sec-RFEDA}
 
 ```{r}
+#reset the seed and reset the data
 df = read.csv("dataset30.csv")
 set.seed(1111)
 
@@ -257,11 +261,13 @@ df = df %>% select(Age, Education, Marital_Status, Occupation, Sex, Hours_PW, In
 df = df %>% mutate(across(where(is.character), as.factor))
 x = df[,1:6]
 y = df[,7]
+#test train splite
 
 x_pre = x[1:1228,]
 x_te = x[1229:1409,]
 y_pre = y[1:1228]
 y_te = y[1229:1409]
+#predict the RF model and set the confusionmatrics
 pre = cbind(y_pre,x_pre)
 rf_model = randomForest(y_pre~.,data = pre,ntree = 100,importance = T)
 predictions <- predict(rf_model, newdata = x_te)
@@ -276,6 +282,7 @@ print(tb)
 After using the method of Randomforest , we do not need to do any judgement on the value of predictions ,the randomforest automatic done the **decision tree** for the data. The table shows that most of the value full in the range TP and FP, which mean most of the data fit well.
 
 ```{r}
+#the acc is use to text the ggod fit of the model and the TPR and TNR is for the sensitivity of positive
 acc = (TP + TN)/(TP + FP + FN + TN)
 TPR = TP/(TP + FN)
 TNR = TN/(FP + TN)
@@ -287,6 +294,7 @@ print(TNR)
 The accuracy of randomforest is up tp **82.87%** which shows that it give lots of information to the predictors, and th achieving a **sensitivity of 86.71%** and **specificity of 68.42%** ,which mean it have a low ability in predict the negative size of value which is the income \>50%.
 
 ```{r}
+#the plot of ROC which show the good fit for the POS. side.
 pred_probs = predict(rf_model,newdata = x_te, type = "prob")[,2]
 roc_c = roc(y_te,pred_probs)
 plot(roc_c,col = "red")
@@ -296,7 +304,7 @@ auc(roc_c)
 using the **ROC and AUC** to detect the balance of the model ,from the plot of ROC we see that the curve are far away from the straight line ,which can also reflect by the number of AUC is **0.8018**, that means the model show more information in the True Positive range than False Negative range ,so it give a good fit to the data.
 
 ```{r}
-# plot the rf
+# plot the rf dicsiontree
 # more minimal depth have high weight in predict
 plot_min_depth_distribution(rf_model)
 ```
@@ -315,6 +323,7 @@ The decision tree plot is the plot that give the most obvious information to the
 ### The Resample for Model {#sec-RESAMPLE}
 
 ```{r}
+#the resample part using K-fold.stable the VAR
 K = 5
 set.seed(1111)
 folds = cut(1:1409, breaks=K, labels=FALSE)
