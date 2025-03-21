@@ -1,12 +1,12 @@
 # Overview
 
-This repository provides an analysis on
+This repository provides an **data analysis** on
 what socio-economic factors influence an individual's income level.
 
 # Data Source
 
-The
-[dataset](https://github.com/ZhuohangQ/DAS-Group-30/blob/main/dataset30.csv)
+The dataset
+<dataset30.csv>
 comes from **U.S. Census Bureau, 1994**.
 
 # Source Code
