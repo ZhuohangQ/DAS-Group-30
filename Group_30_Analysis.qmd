@@ -54,8 +54,7 @@ df <- read.csv("dataset30.csv", na.strings = '?,',
   drop_na() %>%
   mutate(
     across(everything(), ~ str_remove_all(., ",")),
-    Hours_PW = as.numeric(Hours_PW),
-    Age = as.numeric(Age),
+    across(c(Hours_PW, Age), as.numeric),
     across(where(is.character), as.factor))
 ```
 
@@ -210,7 +209,21 @@ save_fig(
 g
 ```
 
-The table shows that the sample size from groups except United States is small, which may adversely affect model performance if nationality is used as an explanatory variable.
+```{r}
+#| tbl-cap: Nationality Summary
+
+df %>%
+  summarise(
+    Count = n(),
+    .by = Nationality
+  ) %>%
+  mutate(
+    'Proportion (%)' = Count / sum(Count) * 100
+  ) %>% top_n(3, Count) %>%
+  kable(digits = 2)
+```
+
+The plots show that the sample size from groups except United States is small, which may adversely affect model performance if nationality is used as an explanatory variable.
 
 # Formal Data Analysis {#sec-FDA}
 
