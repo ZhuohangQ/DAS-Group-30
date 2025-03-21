@@ -55,12 +55,7 @@ df <- read.csv("dataset30.csv", na.strings = '?,',
   mutate(
     across(everything(), ~ str_remove_all(., ",")),
     Hours_PW = as.numeric(Hours_PW),
-    Age = scale(as.numeric(Age))[,1],
-    Education = Education %>% factor(
-      levels = c('Preschool', '1st-4th', '5th-6th', '7th-8th',
-                 '9th', '10th', '11th', '12th', 'HS-grad',
-                 'Prof-school', 'Some-college', 'Assoc-acdm', 'Assoc-voc',
-                 'Bachelors', 'Masters', 'Doctorate')),
+    Age = as.numeric(Age),
     across(where(is.character), as.factor))
 ```
 
@@ -76,6 +71,8 @@ test_data <- df[-trainIndex,]
 This data analysis first involved cleaning, transforming, selecting, and standardizing the raw data. Then, the dataset was split into **80% training set and 20% test set** to ensure data quality and enhance the model's generalization ability.
 
 # Exploratory Data Analysis {#sec-EDA}
+
+## Numerical Variables
 
 ```{r}
 num_plot <- function(data, col) {
@@ -114,6 +111,8 @@ g
 ```
 
 Working hours have a significant impact on income, higher earners tend to work longer hours, but hours alone do not fully determine income. The working hours of low-income groups are more concentrated, but there are more outliers: individuals with extremely low working hours (\<25 hours) and extremely high working hours (\>50 hours).
+
+## Categorical Variables
 
 ```{r}
 cat_plot <- function(data, col) {
