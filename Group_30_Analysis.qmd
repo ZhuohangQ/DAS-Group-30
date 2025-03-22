@@ -339,9 +339,22 @@ In terms of overall classification performance, the **AUC value** at
 `r round(auc(roc_curve_test), 4)`
 indicates that the model performs well in distinguishing between high-income and low-income individuals, and the **ROC curve** demonstrates strong discriminatory power.
 
+```{r}
+# save model performance for comparison
+models_sum <-
+  data.frame(GLM = c(
+    ACC = conf_matrix$overall[["Accuracy"]],
+    Sensitivity = conf_matrix$byClass[["Sensitivity"]],
+    Specificity = conf_matrix$byClass[["Specificity"]],
+    AUC = auc(roc_curve_test)
+  ))
+```
+
 ## Random Forest {#sec-RFEDA}
 
 ```{r}
+#| tbl-cap: Confusion Matrix of Random Forest
+
 #reset the seed and reset the data
 df = read.csv("dataset30.csv")
 set.seed(1111)
@@ -372,7 +385,7 @@ TP = tb[1,1]
 FP = tb[1,2]
 FN = tb[2,1]
 TN = tb[2,2]
-print(tb)
+tb %>% kable()
 ```
 
 After using the method of Randomforest , we do not need to do any judgement on the value of predictions ,the randomforest automatic done the **decision tree** for the data. The table shows that most of the value full in the range TP and FP, which mean most of the data fit well.
@@ -390,16 +403,31 @@ print(TNR)
 The accuracy of randomforest is up tp **82.87%** which shows that it give lots of information to the predictors, and th achieving a **sensitivity of 86.71%** and **specificity of 68.42%** ,which mean it have a low ability in predict the negative size of value which is the income \>50%.
 
 ```{r}
+#| fig-cap: ROC Curve for Test Data
+#| fig-align: center
+
 #the plot of ROC which show the good fit for the POS. side.
 pred_probs = predict(rf_model,newdata = x_te, type = "prob")[,2]
 roc_c = roc(y_te,pred_probs)
 plot(roc_c,col = "red")
+```
+
+```{r}
 auc(roc_c)
 ```
 
 using the **ROC and AUC** to detect the balance of the model ,from the plot of ROC we see that the curve are far away from the straight line ,which can also reflect by the number of AUC is **0.8018**, that means the model show more information in the True Positive range than False Negative range ,so it give a good fit to the data.
 
 ```{r}
+models_sum <- models_sum %>% cbind(RF = c(
+  acc, TPR, TNR, auc(roc_c)
+))
+```
+
+```{r}
+#| fig-cap: Minimal Depth of Random Forest
+#| fig-align: center
+
 # plot the rf dicsiontree
 # more minimal depth have high weight in predict
 plot_min_depth_distribution(rf_model)
@@ -408,6 +436,9 @@ plot_min_depth_distribution(rf_model)
 This is the plot of **minimal depth** ,the plot give outlay the first time of the "tree branch" split by each variable ,the closer the split from the root the more influence it comes .So form the plot **Marital_Status** give the most information to the model ,then comes the **Education**. However that didn't mean that the other variable didn't appeard on the plot don't make any influence ,we still need to consider the times that it split for each variable.
 
 ```{r}
+#| fig-cap: Random Forest Decision Tree
+#| fig-align: center
+
 rpart_tree <- rpart(y_pre ~ ., data=pre)
 # plot(rpart_tree,compress = TRUE)
 # text(rpart_tree, use.n = TRUE,cex = 0.5)
@@ -452,7 +483,19 @@ the re-sample are usually used to do repeat experiment ,this is for helping the 
 
 ## Comparative Analysis between the GLM and Random Forest {#sec-Com}
 
-From the data we get above we can have a compare to two model. The data show above:(LEFT FOR GLM AND RIGHT FOR RF) ACC: 0.8541 - 0.8287 Sensitivity: 0.9486 - 0.8671 Specificity: 0.5522 - 0.6842 AUC: 0.8683 - 0.8018 After looking at these data we can see that two data we can get the conclusion that two model are giving the near ACC and AUC ,and the GLM is higher, it can show that GLM are giving more information to the data, but maybe after changing the depth of Randomforest ,the fitting rate of it would be higher than the GLM. So we can say that both of the model can be use in this data fitting but glm is a better one . tip: the RF model are higher in Specificity and lower in Sensitivity show that it have a better detection on the Negative side but less in Positive side.
+From the data we get above we can have a compare to two model.
+
+```{r}
+#| label: tbl-model-sum
+#| tbl-cap: Summary for Models
+
+models_sum %>% kable(digits = 4)
+```
+
+@tbl-model-sum shows that two model are giving the near ACC and AUC ,and the GLM is higher.
+The RF model is higher in Specificity and lower in Sensitivity, which indicates that it have a better detection on the Negative side but less in Positive side.
+It can be seen that GLM are giving more information to the data, but maybe after changing the depth of Random Forest ,the fitting rate of it would be higher than the GLM.
+So we can say that both of the model can be used in this data fitting, but GLM is a better one.
 
 # Conclusions {#sec-Conc}
 
