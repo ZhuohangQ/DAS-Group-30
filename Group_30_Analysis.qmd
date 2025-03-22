@@ -43,9 +43,11 @@ save_fig <- function(filename, ...) {
 
 # Introduction {#sec-Intro}
 
-This analysis aims to identify key socio-economic factors that influence whether an individual earns more than \$50,000 per year, using data from **U.S. Census Bureau, 1994**. The dataset includes demographic and employment-related variables including **age, education level, marital status, occupation, sex, hours worked per week, and nationality**, with income categorised into two groups: $\le$\$50k and $>$\$50k per year.
+This analysis aims to identify key socio-economic factors that influence whether an individual earns more than \$50,000 per year, using data from **U.S. Census Bureau, 1994**.
+The dataset includes demographic and employment-related variables including **age, education level, marital status, occupation, sex, hours worked per week, and nationality**, with income categorised into two groups: $\le$\$50k and $>$\$50k per year.
 
-To address this, a **Generalised Linear Model** will be applied to evaluate the impact of these factors on income levels. The findings will provide insights into the most significant predictors of higher earnings, contributing to a deeper understanding of income distribution patterns.
+To address this, a **Generalised Linear Model** is applied to evaluate the impact of these factors on income levels.
+The findings provide insights into the most significant predictors of higher earnings, contributing to a deeper understanding of income distribution patterns.
 
 # Data Processing
 
@@ -56,6 +58,7 @@ df <- read.csv("dataset30.csv", na.strings = '?,',
   drop_na() %>%
   mutate(
     across(everything(), ~ str_remove_all(., ",")),
+    Income = Income %>% factor(levels = c('<=50K', '>50K')),
     across(c(Hours_PW, Age), as.numeric),
     across(where(is.character), as.factor))
 ```
@@ -63,13 +66,13 @@ df <- read.csv("dataset30.csv", na.strings = '?,',
 ```{r}
 # split train and test data
 set.seed(1111)
-# trainIndex <- sample(1:nrow(df), 0.8 * nrow(df))
-trainIndex <- createDataPartition(df$Income, p = 0.8, list = FALSE)
+trainIndex <- sample(nrow(df), 0.8 * nrow(df))
 train_data <- df[trainIndex,]
 test_data <- df[-trainIndex,]
 ```
 
-This data analysis first involved cleaning, transforming, selecting, and standardizing the raw data. Then, the dataset was split into **80% training set and 20% test set** to ensure data quality and enhance the model's generalization ability.
+This data analysis first involves data cleaning, and transforming.
+Then, the dataset is split into **80% training set and 20% test set** to ensure data quality and enhance the model's generalization ability.
 
 # Exploratory Data Analysis {#sec-EDA}
 
@@ -94,6 +97,7 @@ num_plot <- function(data, col) {
 ```
 
 ```{r}
+#| label: fig-age
 #| fig-cap: Box-Plot of Age vs. Income
 #| fig-align: center
 
@@ -106,9 +110,11 @@ save_fig(
 g
 ```
 
-As can be seen from the figure, there is a certain positive correlation between age and income: the median age of the high-income group (income $>$\$50K) is higher than that of the low-income group (income $\le$\$50K), indicating that older people are more likely to has the higher income.
+As can be seen from @fig-age, there is a certain positive correlation between age and income:
+the median age of the high-income group (income $>$\$50k) is higher than that of the low-income group (income $\le$\$50k), indicating that older people are more likely to has the higher income.
 
 ```{r}
+#| label: fig-hours
 #| fig-cap: Box-Plot of Worked Hours vs. Income
 #| fig-align: center
 
@@ -121,27 +127,34 @@ save_fig(
 g
 ```
 
-Working hours have a significant impact on income, higher earners tend to work longer hours, but hours alone do not fully determine income. The working hours of low-income groups are more concentrated, but there are more outliers: individuals with extremely low working hours (\<25 hours) and extremely high working hours (\>50 hours).
+Working hours have a significant impact on income, higher earners tend to work longer hours, but hours alone do not fully determine income.
+The working hours of low-income groups are more concentrated, but there are more outliers:
+individuals with extremely low working hours (\<25 hours) and extremely high working hours (\>50 hours).
 
 ## Categorical Variables
 
 ```{r}
 # draw bar-plot for categorical variable
 cat_plot <- function(data, col) {
-  data <- data %>% select({{col}}, Income)
-  colname <- as_label(enquo(col))
-  
-  data %>% summarise(
-    '>50K' = sum(Income == '>50K'),
-    '<=50K' = sum(Income == '<=50K'),
-    prop = mean(Income == '>50K'),
-    .by = {{col}}
-  ) %>% pivot_longer(
-    cols = c('>50K', '<=50K'),
-    names_to = 'Income'
-  ) %>%
+  data %>%
+    select({{col}}, Income) %>%
     
-  ggplot(aes(x = reorder({{col}}, prop), fill = Income)) +
+    # calculate count and proportion grouped by variable
+    summarise(
+      '>50K' = sum(Income == '>50K'),
+      '<=50K' = sum(Income == '<=50K'),
+      prop = mean(Income == '>50K'),
+      .by = {{col}}) %>%
+    
+    # transform wide-form to long-form
+    pivot_longer(
+      cols = c('>50K', '<=50K'),
+      names_to = 'Income') %>%
+  
+  ggplot(aes(
+    # order x-axis by proportion of high-income
+    x = reorder({{col}}, prop),
+    fill = Income)) +
   geom_col(aes(y = value)) +
   scale_colour_manual(values = income_colour,
                       aesthetics = 'fill') +
@@ -163,9 +176,14 @@ save_fig(
 g
 ```
 
-Education level is positively correlated to income, and higher degree is more likely to earn a high income. In particular, the proportion of high income of master's, doctor's and professional school graduates is significantly higher, while those with low education level are mainly concentrated in low-income groups. This suggests that education level plays an important role in income.
+Education level is positively correlated to income,
+and higher degree is more likely to earn a high income.
+In particular, the proportion of high income of master's, doctor's and professional school graduates is significantly higher,
+while those with low education level are mainly concentrated in low-income groups.
+This suggests that education level plays an important role in income.
 
 ```{r}
+#| label: fig-marital
 #| fig-cap: Bar-Plot of Marital Status by Income
 #| fig-align: center
 
@@ -178,9 +196,10 @@ save_fig(
 g
 ```
 
-The figure shows that people married with civil spouse have higher income than other group.
+@fig-marital shows that people married with civil spouse have higher income than other group.
 
 ```{r}
+#| label: fig-occupation
 #| fig-cap: Bar-Plot of Occupation by Income
 #| fig-align: center
 
@@ -193,7 +212,9 @@ save_fig(
 g
 ```
 
-The figure shows clear income differences between different occupational categories. A higher percentage of "Exec-managerial" and "Prof-specialty" occupations make more than 50,000, indicating that these occupations are more likely to generate higher income. By contrast, the proportion of "Priv-house-serv" and "Handlers-cleaners" is significantly lower.
+@fig-occupation shows clear income differences between different occupational categories.
+A higher percentage of "Exec-managerial" and "Prof-specialty" occupations make more than 50,000, indicating that these occupations are more likely to generate higher income.
+By contrast, the proportion of "Priv-house-serv" and "Handlers-cleaners" is significantly lower.
 
 ```{r}
 #| fig-cap: Bar-Plot of Gender by Income
@@ -208,7 +229,9 @@ save_fig(
 g
 ```
 
-There are significant differences in income distribution between men and women. The propotion of men earning more than \$50,000 is significantly higher than that of women, while the women income less than \$50,000 is relatively higher.
+There are significant differences in income distribution between men and women.
+The proportion of men earning more than \$50,000 is significantly higher than that of women,
+while the women income less than \$50,000 is relatively higher.
 
 ```{r}
 #| fig-cap: Bar-Plot of Nationality by Income
@@ -235,42 +258,86 @@ df %>%
   # calculate proportion
   mutate(
     'Proportion in Observations (%)' = Count / sum(Count) * 100
-  ) %>% top_n(3, Count) %>%
+  ) %>%
+  top_n(3, Count) %>%
   kable(digits = 2)
 ```
 
-The plots show that the sample size from groups except United States is small, which may adversely affect model performance if nationality is used as an explanatory variable.
+These summaries show that the sample size from groups except United States is quite small,
+which may adversely impact model accuracy if nationality is used as an explanatory variable.
 
 # Formal Data Analysis {#sec-FDA}
 
 ## Generalised Linear Model
 
 ```{r}
-#| label: Model Training
 # Fit a full logistic regression model using all predictors
 full_model <- glm(Income ~ ., data = train_data, family = binomial)
-# Perform stepwise regression to simplify the model, starting from the full model and removing non-significant predictors
+```
+
+The **logistic regression** model is built to predict income level **(`Income`)** by considering various socio-economic factors,
+including **age, education, marital status, occupation, sex,** and **hours worked per week**.
+
+```{r, results='hide'}
+# Perform stepwise regression to simplify the model,
+# starting from the full model and removing non-significant predictors
 stepwise_model <- step(full_model, direction = "backward")
 ```
 
-The **logistic regression** model is built to predict income level **(`Income`)** by considering various socioeconomic factors, such as **age, education, marital status, occupation, sex,** and **hours worked per week**. To further refine the model, **stepwise regression** is applied using **backward elimination**, which systematically removes variables that do **not significantly** **(sex)** contribute to the prediction based on the **Akaike Information Criterion (AIC)**. The initial model's AIC was **883.77**, while the optimized model's AIC was reduced to **882.19**, indicating that the model became more concise while maintaining a good fit. As a result, this approach not only simplifies the model but also helps to reduce overfitting and enhance interpretability by retaining only the most significant predictors.
+To further refine the model, **stepwise regression** is applied using **backward elimination**,
+which systematically removes variables that do **not significantly** contribute to the prediction based on the **Akaike Information Criterion (AIC)**.
+
+The reduced model is given by formula
+`r deparse1(stepwise_model$formula)`.
+
+The initial model's **AIC** is
+`r round(AIC(full_model), 2)`,
+while the optimized model's **AIC** was reduced to
+`r round(AIC(stepwise_model), 2)`,
+indicating that the model becomes more concise while maintaining a good fit.
+As a result, this approach not only simplifies the model,
+but also helps to reduce over-fitting and to enhance interpretability by retaining only the most significant predictors.
 
 ```{r}
-#| label: Performance Evaluation
-# compute the accuracy, confusionMatrix
-test_predictions <- predict(stepwise_model, newdata = test_data, type = "response")
+#| tbl-cap: Confusion Matrix of GLM
+
+# compute the accuracy, and confusion matrix
+test_predictions <-
+  predict(stepwise_model, newdata = test_data, type = "response")
 test_predicted_classes <- ifelse(test_predictions > 0.5, '>50K', '<=50K')
-confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
-conf_matrix <- confusionMatrix(factor(test_predicted_classes), factor(test_data$Income))
-accuracy <- conf_matrix$overall["Accuracy"]
-print(accuracy)
-# draw the curve of roc and compute the auc
-roc_curve_test <- roc(test_data$Income, test_predictions)
-plot(roc_curve_test, col = "red", main = "ROC Curve for Test Data", xlim = c(1, 0), ylim = c(0, 1), asp = 1)
-auc(roc_curve_test)
+conf_matrix <-
+  confusionMatrix(factor(test_predicted_classes), test_data$Income)
+conf_matrix$table %>% kable()
 ```
 
-The evaluation results of this logistic regression model on the test set indicate a high classification capability, with an accuracy of **85.41%** within the **95% confidence interval (80.73% - 89.32%)**, demonstrating stable predictive performance. The confusion matrix further shows that the model has a strong ability to identify low-income individuals, achieving a **sensitivity of 94.86%**, meaning that most low-income individuals are correctly classified. However, the **specificity is only 55.22%**, suggesting that the model has some difficulty in correctly identifying high-income individuals, with a considerable number being misclassified as low-income. Despite this, the model's **accuracy (ACC)** still reaches **85.4%**. In terms of overall classification performance, the **AUC value of 0.8683** indicates that the model performs well in distinguishing between high-income and low-income individuals, and the **ROC curve** demonstrates strong discriminatory power.
+```{r}
+#| fig-cap: ROC Curve for Test Data
+#| fig-align: center
+
+# draw the curve of roc and compute the auc
+roc_curve_test <- roc(test_data$Income, test_predictions)
+plot(roc_curve_test, col = "red",
+     xlim = c(1, 0), ylim = c(0, 1), asp = 1)
+```
+
+The evaluation results of this logistic regression model on the test set indicate a high classification capability,
+with an **accuracy** of
+`r round(conf_matrix$overall["Accuracy"] * 100, 2)`%
+within the **95% confidence interval**
+(`r round(conf_matrix$overall["AccuracyLower"] * 100, 2)`%
+-
+`r round(conf_matrix$overall["AccuracyUpper"] * 100, 2)`%),
+demonstrating stable predictive performance.
+The confusion matrix further shows that the model has a strong ability to identify low-income individuals, achieving a **sensitivity** of
+`r round(conf_matrix$byClass["Sensitivity"] * 100, 2)`%,
+meaning that most low-income individuals are correctly classified.
+However, the **specificity** is only
+`r round(conf_matrix$byClass["Specificity"] * 100, 2)`%,
+suggesting that the model has some difficulty in correctly identifying high-income individuals,
+with a considerable number being misclassified as low-income.
+In terms of overall classification performance, the **AUC value** at
+`r round(auc(roc_curve_test), 4)`
+indicates that the model performs well in distinguishing between high-income and low-income individuals, and the **ROC curve** demonstrates strong discriminatory power.
 
 ## Random Forest {#sec-RFEDA}
 
